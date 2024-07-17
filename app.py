@@ -6,7 +6,7 @@ from tqdm import tqdm
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'secret!'
-socketio = SocketIO(app)
+socketio = SocketIO(app, async_mode='eventlet')  # Use async_mode='eventlet' for compatibility
 
 def fetch_m3u_from_url(url):
     try:
@@ -44,7 +44,7 @@ def test_iptv_channels(m3u_lines):
                     channel_name = channel_name_match.group(1)
                     failed_channels.append({'name': channel_name, 'url': line, 'error': str(e)})
             progress += 1
-            socketio.emit('progress', {'progress': (progress / total_channels) * 100})
+            socketio.emit('progress', {'progress': (progress / total_channels) * 100}, broadcast=True)
     
     return working_channels, failed_channels
 
@@ -58,7 +58,7 @@ def handle_check_channels(data):
     m3u_lines = fetch_m3u_from_url(m3u_url)
     if m3u_lines:
         working_channels, failed_channels = test_iptv_channels(m3u_lines)
-        emit('channels', {'working_channels': working_channels, 'failed_channels': failed_channels})
+        emit('channels', {'working_channels': working_channels, 'failed_channels': failed_channels}, broadcast=True)
 
 if __name__ == '__main__':
-    socketio.run(app, debug=True)
+    socketio.run(app, host='0.0.0.0', port=8080, debug=True)  # Adjust the host and port for Vercel
